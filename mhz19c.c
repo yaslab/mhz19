@@ -247,7 +247,7 @@ static bool mhz19c_read(const struct mhz19c_t *mhz19c, uint8_t *command, uint8_t
 // ----------------------------------------------------------------------------
 // MH-Z19C
 
-bool mhz19c_get_co2_ppm(const struct mhz19c_t *mhz19c, int *co2_ppm) {
+bool mhz19c_get_co2_ppm(const struct mhz19c_t *mhz19c, int *co2_ppm, int *temp_c) {
     mhz19c_log_verbose(mhz19c, "mhz19c_get_co2_ppm()");
 
     tcflush(mhz19c->fd, TCIOFLUSH);
@@ -260,18 +260,27 @@ bool mhz19c_get_co2_ppm(const struct mhz19c_t *mhz19c, int *co2_ppm) {
 
     // Read the return value.
 
-    const size_t data_size = 2;
+    const size_t data_size = 3;
     uint8_t data[data_size];
 
     if (!mhz19c_read(mhz19c, NULL, data, data_size)) {
         return false;
     }
 
-    // Return CO2 concentration (ppm).
+    // Return CO2 concentration (ppm) and temperature (°C).
 
-    *co2_ppm = data[0] << 8 | data[1];
+    int _co2_ppm = data[0] << 8 | data[1];
+    int _temp_c = data[2] - 40;
 
-    mhz19c_log_verbose(mhz19c, "co2_ppm = %d", *co2_ppm);
+    mhz19c_log_verbose(mhz19c, "co2_ppm = %d", _co2_ppm);
+    mhz19c_log_verbose(mhz19c, "temp_c = %d", _temp_c);
+
+    if (co2_ppm != NULL) {
+        *co2_ppm = _co2_ppm;
+    }
+    if (temp_c != NULL) {
+        *temp_c = _temp_c;
+    }
 
     return true;
 }

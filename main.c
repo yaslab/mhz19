@@ -3,6 +3,7 @@
 
 #include "mhz19c.h"
 
+bool arg_temp;
 bool arg_calib;
 bool arg_calib_enabled;
 bool arg_verbose;
@@ -28,8 +29,13 @@ int main(int argc, char *argv[]) {
         mhz19c_set_auto_calib(&mhz19c, arg_calib_enabled);
     } else {
         int co2_ppm;
-        if (mhz19c_get_co2_ppm(&mhz19c, &co2_ppm)) {
-            printf("%d\n", co2_ppm);
+        int temp_c;
+        if (mhz19c_get_co2_ppm(&mhz19c, &co2_ppm, &temp_c)) {
+            if (arg_temp) {
+                printf("%d %d\n", co2_ppm, temp_c);
+            } else {
+                printf("%d \n", co2_ppm);
+            }
         }
     }
 
@@ -40,7 +46,9 @@ int main(int argc, char *argv[]) {
 
 static bool parse(int argc, char *argv[]) {
     for (int i = 1; i < argc; i += 1) {
-        if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--calib") == 0) {
+        if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--temp") == 0) {
+            arg_temp = true;
+        } else if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--calib") == 0) {
             arg_calib = true;
 
             i += 1;
@@ -66,9 +74,10 @@ static bool parse(int argc, char *argv[]) {
 
 static void usage() {
     fprintf(stderr, "syntax:\n");
-    fprintf(stderr, "    mhz19c [-v]\n");
+    fprintf(stderr, "    mhz19c [-v] [-t]\n");
     fprintf(stderr, "    mhz19c [-v] -c <STATE>\n");
     fprintf(stderr, "options:\n");
+    fprintf(stderr, "    -t, --temp           : Also prints the temperature.\n");
     fprintf(stderr, "    -c, --calib [on|off] : Set the state of auto calibration.\n");
     fprintf(stderr, "    -v, --verbose        : Set log level to verbose.\n");
 }
