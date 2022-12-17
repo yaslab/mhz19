@@ -3,33 +3,72 @@
 
 #include "mhz19c.h"
 
-int main(int argc, char *argv[]) {
-    mhz19c_t mhz19c = {};
+bool arg_calib;
+bool arg_calib_enabled;
+bool arg_verbose;
 
-    if (!mhz19c_open(&mhz19c)) {
-        printf("Cannot open.\n");
+static bool parse(int argc, char *argv[]);
+static void usage();
+
+int main(int argc, char *argv[]) {
+    if (!parse(argc, argv)) {
+        usage();
         return 1;
     }
 
-    int mode = 0;
-    if (argc == 3 && strcmp(argv[1], "calib") == 0) {
-        if (strcmp(argv[2], "on") == 0) {
-            printf("set on\n");
-            mode = 1;
-        } else {
-            printf("set off\n");
-            mode = 2;
-        }
+    struct mhz19c_t mhz19c = {};
+
+    mhz19c_set_log_verbose(&mhz19c, arg_verbose);
+
+    if (!mhz19c_open(&mhz19c)) {
+        return 1;
     }
 
-    if (mode == 0) {
-        int co2 = mhz19c_get_co2_ppm(&mhz19c);
-        printf("%d\n", co2);
+    if (arg_calib) {
+        mhz19c_set_auto_calib(&mhz19c, arg_calib_enabled);
     } else {
-        mhz19c_set_auto_calib(&mhz19c, mode == 1);
+        int co2_ppm;
+        if (mhz19c_get_co2_ppm(&mhz19c, &co2_ppm)) {
+            printf("%d\n", co2_ppm);
+        }
     }
 
     mhz19c_close(&mhz19c);
 
     return 0;
+}
+
+static bool parse(int argc, char *argv[]) {
+    for (int i = 1; i < argc; i += 1) {
+        if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--calib") == 0) {
+            arg_calib = true;
+
+            i += 1;
+            if (i >= argc) {
+                return false;
+            }
+
+            if (strcmp(argv[i], "off") == 0) {
+                arg_calib_enabled = false;
+            } else if (strcmp(argv[i], "on") == 0) {
+                arg_calib_enabled = true;
+            } else {
+                return false;
+            }
+        } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
+            arg_verbose = true;
+        } else {
+            return false;
+        }
+    }
+    return true;
+}
+
+static void usage() {
+    fprintf(stderr, "syntax:\n");
+    fprintf(stderr, "    mhz19c [-v]\n");
+    fprintf(stderr, "    mhz19c [-v] -c <STATE>\n");
+    fprintf(stderr, "options:\n");
+    fprintf(stderr, "    -c, --calib [on|off] : Set the state of auto calibration.\n");
+    fprintf(stderr, "    -v, --verbose        : Set log level to verbose.\n");
 }
