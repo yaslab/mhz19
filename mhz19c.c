@@ -6,28 +6,28 @@
 
 #include "mhz19c.h"
 
-#define BUFFER_SIZE     8
-#define RETRY_MAX       10
+#define BUFFER_SIZE     (8)
+#define RETRY_MAX       (10)
 
-#define TX_START        0
-#define TX_RESERVED     1
-#define TX_COMMAND      2
-#define TX_DATA(i)      3+i
-#define TX_CHECK_SUM    8
+#define TX_START        (0)
+#define TX_RESERVED     (1)
+#define TX_COMMAND      (2)
+#define TX_DATA(i)      (3+i)
+#define TX_CHECK_SUM    (8)
 
-#define RX_START        0
-#define RX_COMMAND      1
-#define RX_DATA(i)      2+i
-#define RX_CHECK_SUM    8
+#define RX_START        (0)
+#define RX_COMMAND      (1)
+#define RX_DATA(i)      (2+i)
+#define RX_CHECK_SUM    (8)
 
-#define START_VALUE     0xff
-#define RESERVED_VALUE  0x01
+#define START_VALUE     (0xff)
+#define RESERVED_VALUE  (0x01)
 
-#define COM_GET_CO2_PPM     0x86
-#define COM_SET_AUTO_CALIB  0x79
+#define COM_GET_CO2_PPM     (0x86)
+#define COM_SET_AUTO_CALIB  (0x79)
 
-#define CALIB_ON        0xa0
-#define CALIB_OFF       0x00
+#define CALIB_ON        (0xa0)
+#define CALIB_OFF       (0x00)
 
 static uint8_t mhz19c_get_checksum(const uint8_t *buffer);
 
@@ -35,20 +35,20 @@ static uint8_t mhz19c_get_checksum(const uint8_t *buffer);
 // Logging Utility
 
 #define mhz19c_log_verbose(mhz19c, ...) \
-{                                       \
+do {                                    \
     if (mhz19c->verbose) {              \
         fprintf(stderr, "verbose: ");   \
         fprintf(stderr, __VA_ARGS__);   \
         fprintf(stderr, "\n");          \
     }                                   \
-}
+} while(false)
 
 #define mhz19c_log_error(...)           \
-{                                       \
+do {                                    \
     fprintf(stderr, "error: ");         \
     fprintf(stderr, __VA_ARGS__);       \
     fprintf(stderr, "\n");              \
-}
+} while(false)
 
 void mhz19c_set_log_verbose(struct mhz19c_t *mhz19c, bool verbose) {
     mhz19c->verbose = verbose;
