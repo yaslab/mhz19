@@ -6,19 +6,19 @@
 
 #include "mhz19c.h"
 
-#define BUFFER_SIZE     (8)
+#define BUFFER_SIZE     (9)
 #define RETRY_MAX       (10)
 
 #define TX_START        (0)
 #define TX_RESERVED     (1)
 #define TX_COMMAND      (2)
 #define TX_DATA(i)      (3+i)
-#define TX_CHECK_SUM    (8)
+#define TX_CHECKSUM     (8)
 
 #define RX_START        (0)
 #define RX_COMMAND      (1)
 #define RX_DATA(i)      (2+i)
-#define RX_CHECK_SUM    (8)
+#define RX_CHECKSUM     (8)
 
 #define START_VALUE     (0xff)
 #define RESERVED_VALUE  (0x01)
@@ -126,6 +126,8 @@ static bool mhz19c_write(const struct mhz19c_t *mhz19c, uint8_t command, const u
         }
     }
 
+    buffer_tx[TX_CHECKSUM] = mhz19c_get_checksum(buffer_tx);
+
     if (mhz19c->verbose) {
         char message[64] = "send data:";
         char temp[8];
@@ -139,18 +141,6 @@ static bool mhz19c_write(const struct mhz19c_t *mhz19c, uint8_t command, const u
     ssize_t count = write(mhz19c->fd, buffer_tx, BUFFER_SIZE);
     if (count != BUFFER_SIZE) {
         mhz19c_log_error("failed to send data.");
-        return false;
-    }
-
-    // Write checksum.
-
-    const uint8_t checksum = mhz19c_get_checksum(buffer_tx);
-
-    mhz19c_log_verbose(mhz19c, "send checksum: %02x", checksum);
-
-    count = write(mhz19c->fd, &checksum, 1);
-    if (count != 1) {
-        mhz19c_log_error("failed to send checksum.");
         return false;
     }
 
@@ -170,6 +160,8 @@ static bool mhz19c_read(const struct mhz19c_t *mhz19c, uint8_t *command, uint8_t
             mhz19c_log_error("failed to read data. (%zd)", count);
             return false;
         }
+
+        mhz19c_log_verbose(mhz19c, "received %zd bytes.", count);
 
         total_count += (size_t)count;
 
@@ -193,39 +185,15 @@ static bool mhz19c_read(const struct mhz19c_t *mhz19c, uint8_t *command, uint8_t
         mhz19c_log_verbose(mhz19c, "%s", message);
     }
 
-    // Read checksum.
-
-    uint8_t checksum = 0;
-    total_count = 0;
-
-    for (int i = 0; i < RETRY_MAX; i += 1) {
-        const ssize_t count = read(mhz19c->fd, &checksum, 1);
-        if (count < 0) {
-            mhz19c_log_error("failed to read checksum. (%zd)", count);
-            return false;
-        }
-
-        total_count += (size_t)count;
-
-        if (total_count == 1) {
-            break;
-        }
-    }
-
-    if (total_count != 1) {
-        mhz19c_log_error("failed to read checksum. (%zu)", total_count);
-        return false;
-    }
-
-    mhz19c_log_verbose(mhz19c, "read checksum: %02x", checksum);
-
     // Validate data with checksum.
 
     const uint8_t actual_checksum = mhz19c_get_checksum(buffer_rx);
-    if (actual_checksum != checksum) {
-        mhz19c_log_error("failed to varify checksum. the expected value is %02x, but the actual value is %02x.", checksum, actual_checksum);
+    if (buffer_rx[RX_CHECKSUM] != actual_checksum) {
+        mhz19c_log_error("failed to varify checksum. the expected value is %02x, but the actual value is %02x.", buffer_rx[RX_CHECKSUM], actual_checksum);
         return false;
     }
+
+    mhz19c_log_verbose(mhz19c, "the checksum value (%02x) is correct.", actual_checksum);
 
     // Return the received command.
 

@@ -28,8 +28,7 @@ int main(int argc, char *argv[]) {
     if (arg_calib) {
         mhz19c_set_auto_calib(&mhz19c, arg_calib_enabled);
     } else {
-        int co2_ppm;
-        int temp_c;
+        int co2_ppm, temp_c;
         if (mhz19c_get_co2_ppm(&mhz19c, &co2_ppm, &temp_c)) {
             if (arg_temp) {
                 printf("%d %d\n", co2_ppm, temp_c);
