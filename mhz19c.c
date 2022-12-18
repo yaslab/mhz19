@@ -167,7 +167,7 @@ static bool mhz19c_read(const struct mhz19c_t *mhz19c, uint8_t *command, uint8_t
         const size_t rem = BUFFER_SIZE - total_count;
         ssize_t count = read(mhz19c->fd, buffer_rx + total_count, rem);
         if (count < 0) {
-            mhz19c_log_error("failed to read data. (%d)", count);
+            mhz19c_log_error("failed to read data. (%zd)", count);
             return false;
         }
 
@@ -179,7 +179,7 @@ static bool mhz19c_read(const struct mhz19c_t *mhz19c, uint8_t *command, uint8_t
     }
 
     if (total_count != BUFFER_SIZE) {
-        mhz19c_log_error("failed to read data. (%d)", total_count);
+        mhz19c_log_error("failed to read data. (%zu)", total_count);
         return false;
     }
 
@@ -201,7 +201,7 @@ static bool mhz19c_read(const struct mhz19c_t *mhz19c, uint8_t *command, uint8_t
     for (int i = 0; i < RETRY_MAX; i += 1) {
         const ssize_t count = read(mhz19c->fd, &checksum, 1);
         if (count < 0) {
-            mhz19c_log_error("failed to read checksum. (%d)", count);
+            mhz19c_log_error("failed to read checksum. (%zd)", count);
             return false;
         }
 
@@ -213,7 +213,7 @@ static bool mhz19c_read(const struct mhz19c_t *mhz19c, uint8_t *command, uint8_t
     }
 
     if (total_count != 1) {
-        mhz19c_log_error("failed to read checksum. (%d)", total_count);
+        mhz19c_log_error("failed to read checksum. (%zu)", total_count);
         return false;
     }
 
