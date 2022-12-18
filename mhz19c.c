@@ -69,12 +69,22 @@ bool mhz19c_open(struct mhz19c_t *mhz19c) {
 
     mhz19c_log_verbose(mhz19c, "set the termios state.");
 
-    // By default stop bit 1 byte and parity bit null.
     struct termios tio = {};
-    // Use raw mode. This also sets data bit to 8 bytes.
-    cfmakeraw(&tio);
+
+    if (tcgetattr(fd, &tio) < 0) {
+        mhz19c_log_error("failed to get the termios state.");
+        close(fd);
+        return false;
+    }
+
     // Set serial port baud rate be 9600.
     cfsetspeed(&tio, B9600);
+
+    // Use raw mode. This also sets data bit to 8 bytes and parity bit null.
+    cfmakeraw(&tio);
+
+    // Set stop bit to 1 byte.
+    tio.c_cflag &= ~((tcflag_t)CSTOPB);
 
     tio.c_cflag |= CREAD;
     tio.c_cflag |= CLOCAL;
@@ -87,8 +97,7 @@ bool mhz19c_open(struct mhz19c_t *mhz19c) {
     // Note:
     // This is equivalent to `ioctl(fd, TCSETS, &tio)`.
     // Use of ioctl makes for non-portable programs.
-    const int result = tcsetattr(fd, TCSANOW, &tio);
-    if (result < 0) {
+    if (tcsetattr(fd, TCSANOW, &tio) < 0) {
         mhz19c_log_error("failed to set the termios state.");
         close(fd);
         return false;
@@ -102,8 +111,7 @@ bool mhz19c_open(struct mhz19c_t *mhz19c) {
 bool mhz19c_close(const struct mhz19c_t *mhz19c) {
     mhz19c_log_verbose(mhz19c, "close the device.");
 
-    const int result = close(mhz19c->fd);
-    if (result < 0) {
+    if (close(mhz19c->fd) < 0) {
         mhz19c_log_error("failed to close the device.");
         return false;
     }
@@ -141,6 +149,11 @@ static bool mhz19c_write(const struct mhz19c_t *mhz19c, uint8_t command, const u
     ssize_t count = write(mhz19c->fd, buffer_tx, BUFFER_SIZE);
     if (count != BUFFER_SIZE) {
         mhz19c_log_error("failed to send data.");
+        return false;
+    }
+
+    if (tcdrain(mhz19c->fd) < 0) {
+        mhz19c_log_error("failed to drain data.");
         return false;
     }
 
@@ -218,7 +231,10 @@ static bool mhz19c_read(const struct mhz19c_t *mhz19c, uint8_t *command, uint8_t
 bool mhz19c_get_co2_ppm(const struct mhz19c_t *mhz19c, int *co2_ppm, int *temp_c) {
     mhz19c_log_verbose(mhz19c, "mhz19c_get_co2_ppm()");
 
-    tcflush(mhz19c->fd, TCIOFLUSH);
+    if (tcflush(mhz19c->fd, TCIOFLUSH) < 0) {
+        mhz19c_log_error("failed to flush data.");
+        return false;
+    }
 
     // Send command.
 
@@ -256,7 +272,10 @@ bool mhz19c_get_co2_ppm(const struct mhz19c_t *mhz19c, int *co2_ppm, int *temp_c
 bool mhz19c_set_auto_calib(const struct mhz19c_t *mhz19c, bool enabled) {
     mhz19c_log_verbose(mhz19c, "mhz19c_set_auto_calib(enabled = %d)", enabled);
 
-    tcflush(mhz19c->fd, TCIOFLUSH);
+    if (tcflush(mhz19c->fd, TCIOFLUSH) < 0) {
+        mhz19c_log_error("failed to flush data.");
+        return false;
+    }
 
     // Send command.
 
