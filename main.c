@@ -3,9 +3,11 @@
 
 #include "mhz19c.h"
 
-bool arg_temp;
-bool arg_calib;
-bool arg_calib_enabled;
+bool arg_get_co2;
+bool arg_get_temp;
+bool arg_set_calib;
+bool arg_set_calib_is_on;
+bool arg_get_calib;
 bool arg_verbose;
 
 static bool parse(int argc, char *argv[]);
@@ -25,16 +27,30 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    if (arg_calib) {
-        mhz19c_set_auto_calib(&mhz19c, arg_calib_enabled);
+    if (arg_set_calib) {
+        mhz19c_set_auto_calib(&mhz19c, arg_set_calib_is_on);
+    } else if (arg_get_calib) {
+        bool is_on;
+        if (mhz19c_get_auto_calib(&mhz19c, &is_on)) {
+            printf("%s\n", is_on ? "on" : "off");
+        }
     } else {
-        int co2_ppm, temp_c;
-        if (mhz19c_get_co2_ppm(&mhz19c, &co2_ppm, &temp_c)) {
-            if (arg_temp) {
-                printf("%d %d\n", co2_ppm, temp_c);
-            } else {
-                printf("%d \n", co2_ppm);
+        int co2_ppm;
+        float temp;
+        char text[64] = {};
+        char work[64];
+        if (arg_get_co2 && mhz19c_get_co2_ppm(&mhz19c, &co2_ppm, NULL)) {
+            sprintf(work, "%d", co2_ppm);
+            strcat(text, work);
+            printf("%s\n", text);
+        }
+        if (arg_get_temp && mhz19c_get_temperature(&mhz19c, &temp)) {
+            if (arg_get_co2) {
+                strcat(text, " ");
             }
+            sprintf(work, "%f", temp);
+            strcat(text, work);
+            printf("%s\n", text);
         }
     }
 
@@ -44,11 +60,16 @@ int main(int argc, char *argv[]) {
 }
 
 static bool parse(int argc, char *argv[]) {
+    if (argc == 1) {
+        return false;
+    }
     for (int i = 1; i < argc; i += 1) {
-        if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--temp") == 0) {
-            arg_temp = true;
-        } else if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--calib") == 0) {
-            arg_calib = true;
+        if (strcmp(argv[i], "-c") == 0 || strcmp(argv[i], "--co2") == 0) {
+            arg_get_co2 = true;
+        } else if (strcmp(argv[i], "-t") == 0 || strcmp(argv[i], "--temperature") == 0) {
+            arg_get_temp = true;
+        } else if (strcmp(argv[i], "--set-calib") == 0) {
+            arg_set_calib = true;
 
             i += 1;
             if (i >= argc) {
@@ -56,27 +77,39 @@ static bool parse(int argc, char *argv[]) {
             }
 
             if (strcmp(argv[i], "off") == 0) {
-                arg_calib_enabled = false;
+                arg_set_calib_is_on = false;
             } else if (strcmp(argv[i], "on") == 0) {
-                arg_calib_enabled = true;
+                arg_set_calib_is_on = true;
             } else {
                 return false;
             }
+        } else if (strcmp(argv[i], "--get-calib") == 0) {
+            arg_get_calib = true;
         } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
             arg_verbose = true;
         } else {
             return false;
         }
     }
+    if (arg_set_calib && arg_get_calib) {
+        return false;
+    }
+    if ((arg_set_calib || arg_get_calib) && (arg_get_co2 || arg_get_temp)) {
+        return false;
+    }
     return true;
 }
 
 static void usage() {
     fprintf(stderr, "syntax:\n");
-    fprintf(stderr, "    mhz19c [-v] [-t]\n");
-    fprintf(stderr, "    mhz19c [-v] -c <STATE>\n");
+    fprintf(stderr, "  mhz19c -c [-t] [-v]\n");
+    fprintf(stderr, "  mhz19c -t [-c] [-v]\n");
+    fprintf(stderr, "  mhz19c --set-calib <STATE> [-v]\n");
+    fprintf(stderr, "  mhz19c --get-calib [-v]\n");
     fprintf(stderr, "options:\n");
-    fprintf(stderr, "    -t, --temp           : Also prints the temperature.\n");
-    fprintf(stderr, "    -c, --calib [on|off] : Set the state of auto calibration.\n");
-    fprintf(stderr, "    -v, --verbose        : Set log level to verbose.\n");
+    fprintf(stderr, "  -c, --co2            : Prints the co2 concentration.\n");
+    fprintf(stderr, "  -t, --temperature    : Prints the temperature.\n");
+    fprintf(stderr, "  --set-calib <STATE>  : Set the state of auto calibration. STATE=[on|off]\n");
+    fprintf(stderr, "  --get-calib          : Get the state of auto calibration.\n");
+    fprintf(stderr, "  -v, --verbose        : Set log level to verbose.\n");
 }
