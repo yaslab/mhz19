@@ -7,7 +7,7 @@
 struct mhz19c_t {
     bool verbose;
     int fd;
-    uint8_t version[4];
+    char version[5];
 };
 
 void mhz19c_set_log_verbose(struct mhz19c_t *mhz19c, bool verbose);

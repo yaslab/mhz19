@@ -27,36 +27,52 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    int status = 0;
+
     if (arg_set_calib) {
-        mhz19c_set_auto_calib(&mhz19c, arg_set_calib_is_on);
+        if (!mhz19c_set_auto_calib(&mhz19c, arg_set_calib_is_on)) {
+            status = 1;
+            goto CLEAN_UP;
+        }
     } else if (arg_get_calib) {
         bool is_on;
-        if (mhz19c_get_auto_calib(&mhz19c, &is_on)) {
-            printf("%s\n", is_on ? "on" : "off");
+        if (!mhz19c_get_auto_calib(&mhz19c, &is_on)) {
+            status = 1;
+            goto CLEAN_UP;
         }
+        printf("%s\n", is_on ? "on" : "off");
     } else {
         int co2_ppm;
         float temp;
         char text[64] = {};
         char work[64];
-        if (arg_get_co2 && mhz19c_get_co2_ppm(&mhz19c, &co2_ppm, NULL)) {
+        if (arg_get_co2) {
+            if (!mhz19c_get_co2_ppm(&mhz19c, &co2_ppm, NULL)) {
+                status = 1;
+                goto CLEAN_UP;
+            }
             sprintf(work, "%d", co2_ppm);
             strcat(text, work);
-            printf("%s\n", text);
         }
-        if (arg_get_temp && mhz19c_get_temperature(&mhz19c, &temp)) {
+        if (arg_get_temp) {
+            if (!mhz19c_get_temperature(&mhz19c, &temp)) {
+                status = 1;
+                goto CLEAN_UP;
+            }
             if (arg_get_co2) {
                 strcat(text, " ");
             }
-            sprintf(work, "%f", temp);
+            sprintf(work, "%.2f", temp);
             strcat(text, work);
-            printf("%s\n", text);
         }
+        printf("%s\n", text);
     }
+
+CLEAN_UP:
 
     mhz19c_close(&mhz19c);
 
-    return 0;
+    return status;
 }
 
 static bool parse(int argc, char *argv[]) {

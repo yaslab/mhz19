@@ -110,9 +110,24 @@ bool mhz19c_open(struct mhz19c_t *mhz19c) {
     mhz19c->fd = fd;
 
     // Get firmware version.
-    for (int i = 0; i < RETRY_MAX; i += 1) {
-        if (mhz19c_get_version(mhz19c)) {
-            break;
+    // Note:
+    // When connecting for the first time after turning on the power, data
+    // that does not match the checksum may be received. So it will retry
+    // until it receives correct data.
+    {
+        bool success = false;
+        for (int i = 0; i < RETRY_MAX; i += 1) {
+            if (mhz19c_get_version(mhz19c)) {
+                success = true;
+                break;
+            }
+
+            usleep(25 * 1000); // Wait for 25 ms.
+        }
+        if (!success) {
+            mhz19c_log_error("failed to get the firmware version.");
+            close(fd);
+            return false;
         }
     }
 
@@ -242,6 +257,11 @@ static bool mhz19c_read(const struct mhz19c_t *mhz19c, uint8_t *command, uint8_t
 bool mhz19c_get_temperature(const struct mhz19c_t *mhz19c, float *temp) {
     mhz19c_log_verbose(mhz19c, "mhz19c_get_temperature()");
 
+    if (mhz19c->version[1] <= '4') {
+        mhz19c_log_error("not supported.");
+        return false;
+    }
+
     if (tcflush(mhz19c->fd, TCIOFLUSH) < 0) {
         mhz19c_log_error("failed to flush data.");
         return false;
@@ -255,7 +275,7 @@ bool mhz19c_get_temperature(const struct mhz19c_t *mhz19c, float *temp) {
 
     // Read the return value.
 
-    const size_t data_size = 4;
+    const size_t data_size = 2;
     uint8_t data[data_size];
 
     if (!mhz19c_read(mhz19c, NULL, data, data_size)) {
@@ -264,9 +284,9 @@ bool mhz19c_get_temperature(const struct mhz19c_t *mhz19c, float *temp) {
 
     // Return temperature (°C).
 
-    float _temp = (float)(data[2] << 8 | data[3]) / 100.f;
+    float _temp = (float)(data[0] << 8 | data[1]) / 100.f;
 
-    mhz19c_log_verbose(mhz19c, "temp = %f", _temp);
+    mhz19c_log_verbose(mhz19c, "temp = %.2f", _temp);
 
     if (temp != NULL) {
         *temp = _temp;
@@ -386,9 +406,15 @@ static bool mhz19c_get_version(struct mhz19c_t *mhz19c) {
 
     // Read the return value.
 
-    if (!mhz19c_read(mhz19c, NULL, mhz19c->version, 4)) {
+    size_t size = sizeof(mhz19c->version);
+
+    if (!mhz19c_read(mhz19c, NULL, (uint8_t *)mhz19c->version, size - 1)) {
         return false;
     }
+
+    mhz19c->version[size - 1] = 0x00;
+
+    mhz19c_log_verbose(mhz19c, "version = %s", mhz19c->version);
 
     return true;
 }
