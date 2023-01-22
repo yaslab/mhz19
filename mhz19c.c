@@ -27,6 +27,7 @@
 #define COM_GET_AUTO_CALIB  (0x7d)
 #define COM_GET_TEMPRATURE  (0x85)
 #define COM_GET_CO2_PPM     (0x86)
+#define COM_ZERO_CALIBRATION (0x87)
 #define COM_GET_VERSION     (0xa0)
 
 #define SET_AUTO_CALIB_OFF  (0x00)
@@ -336,7 +337,24 @@ bool mhz19c_get_co2_ppm(const struct mhz19c_t *mhz19c, int *co2_ppm, int *temp) 
     return true;
 }
 
-bool mhz19c_set_auto_calib(const struct mhz19c_t *mhz19c, bool is_on) {
+bool mhz19c_zero_calibration(const struct mhz19c_t *mhz19c) {
+    mhz19c_log_verbose(mhz19c, "mhz19c_start_calibration()");
+
+    if (tcflush(mhz19c->fd, TCIOFLUSH) < 0) {
+        mhz19c_log_error("failed to flush data.");
+        return false;
+    }
+
+    // Send command.
+
+    if (!mhz19c_write(mhz19c, COM_ZERO_CALIBRATION, NULL, 0)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool mhz19c_set_abc(const struct mhz19c_t *mhz19c, bool is_on) {
     mhz19c_log_verbose(mhz19c, "mhz19c_set_auto_calib(is_on = %d)", is_on);
 
     if (tcflush(mhz19c->fd, TCIOFLUSH) < 0) {
@@ -354,7 +372,7 @@ bool mhz19c_set_auto_calib(const struct mhz19c_t *mhz19c, bool is_on) {
     return true;
 }
 
-bool mhz19c_get_auto_calib(const struct mhz19c_t *mhz19c, bool *is_on) {
+bool mhz19c_get_abc(const struct mhz19c_t *mhz19c, bool *is_on) {
     mhz19c_log_verbose(mhz19c, "mhz19c_get_auto_calib()");
 
     if (tcflush(mhz19c->fd, TCIOFLUSH) < 0) {
