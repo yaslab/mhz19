@@ -8,6 +8,7 @@ bool arg_get_temp;
 bool arg_set_calib;
 bool arg_set_calib_is_on;
 bool arg_get_calib;
+bool arg_get_version;
 bool arg_verbose;
 
 static bool parse(int argc, char *argv[]);
@@ -29,7 +30,9 @@ int main(int argc, char *argv[]) {
 
     int status = 0;
 
-    if (arg_set_calib) {
+    if (arg_get_version) {
+        printf("%s\n", mhz19c.version);
+    } else if (arg_set_calib) {
         if (!mhz19c_set_auto_calib(&mhz19c, arg_set_calib_is_on)) {
             status = 1;
             goto CLEAN_UP;
@@ -101,7 +104,9 @@ static bool parse(int argc, char *argv[]) {
             }
         } else if (strcmp(argv[i], "--get-calib") == 0) {
             arg_get_calib = true;
-        } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--verbose") == 0) {
+        } else if (strcmp(argv[i], "-v") == 0 || strcmp(argv[i], "--version") == 0) {
+            arg_get_version = true;
+        } else if (strcmp(argv[i], "--verbose") == 0) {
             arg_verbose = true;
         } else {
             return false;
@@ -113,19 +118,24 @@ static bool parse(int argc, char *argv[]) {
     if ((arg_set_calib || arg_get_calib) && (arg_get_co2 || arg_get_temp)) {
         return false;
     }
+    if (arg_get_version && argc != 2) {
+        return false;
+    }
     return true;
 }
 
 static void usage() {
     fprintf(stderr, "syntax:\n");
-    fprintf(stderr, "  mhz19c -c [-t] [-v]\n");
-    fprintf(stderr, "  mhz19c -t [-c] [-v]\n");
-    fprintf(stderr, "  mhz19c --set-calib <STATE> [-v]\n");
-    fprintf(stderr, "  mhz19c --get-calib [-v]\n");
+    fprintf(stderr, "  mhz19c -c [-t]\n");
+    fprintf(stderr, "  mhz19c -t [-c]\n");
+    fprintf(stderr, "  mhz19c --set-calib <STATE>\n");
+    fprintf(stderr, "  mhz19c --get-calib\n");
+    fprintf(stderr, "  mhz19c -v\n");
     fprintf(stderr, "options:\n");
     fprintf(stderr, "  -c, --co2            : Prints the co2 concentration.\n");
     fprintf(stderr, "  -t, --temperature    : Prints the temperature.\n");
     fprintf(stderr, "  --set-calib <STATE>  : Set the state of auto calibration. STATE=[on|off]\n");
     fprintf(stderr, "  --get-calib          : Get the state of auto calibration.\n");
-    fprintf(stderr, "  -v, --verbose        : Set log level to verbose.\n");
+    fprintf(stderr, "  -v, --version        : Prints the firmware version.\n");
+    fprintf(stderr, "  --verbose            : Prints verbose log.\n");
 }
